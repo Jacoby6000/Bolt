@@ -159,9 +159,6 @@ jobs:
       - name: Install package dependencies
         run: sudo apt update && sudo apt install -y libx11-dev libxcb1-dev libarchive-dev libluajit-5.1-dev clang cmake ninja-build
           
-      - name: Create Directories 
-        run: mkdir cef
-
       - name: Restore CEF from Cache
         id: restore-cef-cache
         uses: actions/cache/restore@v4
@@ -173,8 +170,10 @@ jobs:
         if: steps.restore-cef-cache.outputs.cache-hit != 'true'
         run: |
           curl -o cef.zip 'https://adamcake.com/cef/cef-${{ env.LINUX_CEF_VERSION }}-linux-x86_64-minimal-ungoogled.zip'
-          unzip cef.zip -d cef
-          cp -r $(ls -d cef/* | head -n 1) Bolt/cef/dist
+          mkdir cef
+          cd cef
+          unzip ../cef.zip
+          cp -r $(ls -d . | head -n 1) Bolt/cef/dist
 
       - name: Save CEF to Cache
         if: steps.restore-cef-cache.outputs.cache-hit != 'true'
