@@ -169,10 +169,10 @@ jobs:
       - name: Download CEF
         if: steps.restore-cef-cache.outputs.cache-hit != 'true'
         run: |
-          curl -o cef.zip 'https://adamcake.com/cef/cef-${{ env.LINUX_CEF_VERSION }}-linux-x86_64-minimal-ungoogled.zip'
+          curl -o cef.tar.gz 'https://adamcake.com/cef/cef-${{ env.LINUX_CEF_VERSION }}-linux-x86_64-minimal-ungoogled.tar.gz'
           mkdir cef
           cd cef
-          unzip ../cef.zip
+          tar -xzf ../cef.tar.gz
           cp -r $(ls -d . | head -n 1) Bolt/cef/dist
 
       - name: Save CEF to Cache
