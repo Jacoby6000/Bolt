@@ -192,7 +192,6 @@ jobs:
       - name: Build Project
         uses: threeal/cmake-action@v2.0.0
         with:
-          source-dir: Bolt # The directory where CMakeLists.txt is located
           build-dir: build # Makes it so that the build directory is set to Bold/build
           generator: Ninja
           options: | 
