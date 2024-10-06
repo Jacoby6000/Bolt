@@ -8,14 +8,14 @@ on:
       - master # Automatically build on pull request to master
   release:
     types: 
-      - published # Automatically build and publish artifacts on release (gated behind ENABLE_WINDOWS_RELEASES)
+      - published # Automatically build on release
 
 env:
   WINDOWS_CEF_VERSION: '114.0.5735.199'
   LINUX_CEF_VERSION: '114.0.5735.134'
   LUAJIT_VERSION: '2.1'
-  ENABLE_WINDOWS_RELEASES: 'false'
-  ENABLE_LINUX_RELEASES: 'false'
+  ENABLE_WINDOWS_RELEASES: 'true'
+  ENABLE_LINUX_RELEASES: 'true'
 
 jobs:
   build-windows-project:          
