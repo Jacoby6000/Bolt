@@ -114,7 +114,7 @@ jobs:
         uses: threeal/cmake-action@v2.0.0
         with:
           source-dir: Bolt # The directory where CMakeLists.txt is located
-          build-dir: build # Makes it so that the build directory is set to Bold/build
+          build-dir: build # Makes it so that the build directory is set to Bolt/build
           generator: Visual Studio 17
           options: | 
             BOLT_LUAJIT_DIR=D:\a\Bolt\Bolt\LuaJIT\src
@@ -162,7 +162,7 @@ jobs:
         id: restore-cef-cache
         uses: actions/cache/restore@v4
         with:
-          path: cef\dist
+          path: cef/dist
           key: 'linux-cef-${{ env.LINUX_CEF_VERSION }}'
 
       - name: Download CEF
@@ -175,7 +175,6 @@ jobs:
           # Extract the cef tarball and copy the contents to the dist directory
           tar -xzf cef/cef.tar.gz --directory cef/dist
 
-          tree
           cef_content_dir=$(ls -d cef/dist/* | head -n 1)
           mv "$cef_content_dir"/* cef/dist/
             
@@ -186,13 +185,13 @@ jobs:
         if: steps.restore-cef-cache.outputs.cache-hit != 'true'
         uses: actions/cache/save@v4
         with:
-          path: cef\dist
+          path: cef/dist
           key: 'linux-cef-${{ env.LINUX_CEF_VERSION }}'
       
       - name: Build Project
         uses: threeal/cmake-action@v2.0.0
         with:
-          build-dir: build # Makes it so that the build directory is set to Bold/build
+          build-dir: build # Makes it so that the build directory is set to ./build
           generator: Ninja
           options: | 
             BOLT_LUAJIT_INCLUDE_DIR=/usr/include/luajit-2.1
@@ -200,13 +199,15 @@ jobs:
           build-args: --config Release -j 4
       
       - name: Create Release
-        run: cmake --install build/ --prefix install
+        run: |
+          cmake --install build/ --prefix install
+          chmod +x opt/bolt-launcher/bolt
       
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
         with:
           name: Bolt-Linux-${{ github.sha }}
-          path: install
+          path: install/opt
   
       # Uploads the zip file to the release matching the format of the above step
       # Such that build artifacts and release artifacts are the same
@@ -214,8 +215,6 @@ jobs:
         if: github.event_name == 'release' && env.ENABLE_LINUX_RELEASES == 'true'
         env:
           GH_TOKEN: ${{ github.token }}
-        # In the script below we cd in to Bolt first, because otherwise the gh command will fail.
         run: |
-          cd Bolt
-          zip -r Bolt-Linux.zip install
+          zip -r Bolt-Linux.zip install/opt
           gh release upload ${{ github.event.release.tag_name }} Bolt-Linux.zip
