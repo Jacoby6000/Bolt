@@ -174,9 +174,11 @@ jobs:
 
           # Extract the cef tarball and copy the contents to the dist directory
           tar -xzf cef/cef.tar.gz --directory cef/dist
+
+          tree
           cef_content_dir=$(ls -d cef/dist | head -n 1)
           cp -r "$cef_content_dir/*" cef/dist/
-
+            
           # Clean up the extracted directory
           rm -rf "$cef_content_dir"
 
