@@ -201,7 +201,7 @@ jobs:
       - name: Create Release
         run: |
           cmake --install build/ --prefix install
-          chmod +x opt/bolt-launcher/bolt
+          chmod +x install/opt/bolt-launcher/bolt
       
       - name: Upload Build Artifact
         uses: actions/upload-artifact@v4
