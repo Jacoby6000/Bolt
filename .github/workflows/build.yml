@@ -11,13 +11,15 @@ on:
       - published # Automatically build and publish artifacts on release (gated behind ENABLE_WINDOWS_RELEASES)
 
 env:
-  CEF_VERSION: '114.0.5735.199'
+  WINDOWS_CEF_VERSION: '114.0.5735.199'
+  LINUX_CEF_VERSION: '114.0.5735.134'
   LUAJIT_VERSION: '2.1'
   ENABLE_WINDOWS_RELEASES: 'false'
+  ENABLE_LINUX_RELEASES: 'false'
 
 jobs:
   build-windows-project:          
-    name: Build Project
+    name: Build Windows
     runs-on: windows-2022
     steps:
       - name: Checkout Project
@@ -77,12 +79,12 @@ jobs:
         uses: actions/cache/restore@v4
         with:
           path: Bolt\cef\dist
-          key: 'windows-cef-${{ env.CEF_VERSION }}'
+          key: 'windows-cef-${{ env.WINDOWS_CEF_VERSION }}'
 
       - name: Download CEF
         if: steps.restore-cef-cache.outputs.cache-hit != 'true'
         run: |
-          Invoke-WebRequest -Uri 'https://adamcake.com/cef/cef-${{ env.CEF_VERSION }}-windows64-minimal-ungoogled.zip' -OutFile 'cef.zip'
+          Invoke-WebRequest -Uri 'https://adamcake.com/cef/cef-${{ env.WINDOWS_CEF_VERSION }}-windows64-minimal-ungoogled.zip' -OutFile 'cef.zip'
           Expand-Archive -Path 'cef.zip' -DestinationPath 'cef'
           Copy-Item -Path (Get-ChildItem -Path "cef" -Directory | Select-Object -First 1).FullName -Destination "Bolt\cef\dist" -Recurse
 
@@ -91,7 +93,7 @@ jobs:
         uses: actions/cache/save@v4
         with:
           path: Bolt\cef\dist
-          key: 'windows-cef-${{ env.CEF_VERSION }}'
+          key: 'windows-cef-${{ env.WINDOWS_CEF_VERSION }}'
       
       # At this point the file tree looks like
       # D:\a\Bolt\Bolt
@@ -143,3 +145,90 @@ jobs:
           cd Bolt
           Compress-Archive -Path D:\a\Bolt\Bolt\install-location\bolt-launcher -DestinationPath D:\a\Bolt\Bolt\Bolt-Windows.zip
           gh release upload ${{ github.event.release.tag_name }} D:\a\Bolt\Bolt\Bolt-Windows.zip
+
+  build-linux-project:          
+    name: Build Linux
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout Project
+        uses: actions/checkout@v4.2.0
+        with:
+          path: Bolt
+          submodules: recursive
+
+      - name: Install package dependencies
+        run: sudo apt update && sudo apt install -y libx11-dev libxcb1-dev libarchive-dev luajit-dev clang cmake ninja-build
+          
+      - name: Create Directories 
+        run: mkdir cef
+
+      - name: Restore CEF from Cache
+        id: restore-cef-cache
+        uses: actions/cache/restore@v4
+        with:
+          path: Bolt\cef\dist
+          key: 'linux-cef-${{ env.LINUX_CEF_VERSION }}'
+
+      - name: Download CEF
+        if: steps.restore-cef-cache.outputs.cache-hit != 'true'
+        run: |
+          curl -o cef.zip 'https://adamcake.com/cef/cef-${{ env.LINUX_CEF_VERSION }}-linux-x86_64-minimal-ungoogled.zip'
+          unzip cef.zip -d cef
+          cp -r $(ls -d cef/* | head -n 1) Bolt/cef/dist
+
+      - name: Save CEF to Cache
+        if: steps.restore-cef-cache.outputs.cache-hit != 'true'
+        uses: actions/cache/save@v4
+        with:
+          path: Bolt\cef\dist
+          key: 'linux-cef-${{ env.LINUX_CEF_VERSION }}'
+      
+      # At this point the file tree looks like
+      # Bolt\Bolt
+      # - LuaJIT
+      #   - <whole luaJIT source>
+      # - Bolt
+      #   - <whole Bolt source>
+      #   - cef
+      #     - dist
+      #       - <CEF release distribution>
+      #
+      # The tree has many nested Bolt dirs because of how GHA works.
+      # The first two Bolt dirs (D:\a\Bolt\Bolt) are the workspace provided by github.
+      # Github always does it this way.
+      # Then github normally clones directly in to the workspace with a folder of the repo name. 
+      # However for our usecase we clone multiple repos, so we have D:\a\Bolt\Bolt\{LuaJIT, Bolt}
+      - name: Build Project
+        uses: threeal/cmake-action@v2.0.0
+        with:
+          source-dir: Bolt # The directory where CMakeLists.txt is located
+          build-dir: build # Makes it so that the build directory is set to Bold/build
+          generator: Ninja
+          options: | 
+            BOLT_LUAJIT_INCLUDE_DIR=/usr/include/luajit-2.1
+            CMAKE_BUILD_TYPE=Release
+          build-args: --config Release -j 4
+      
+      # Installs to D:\a\Bolt\Bolt\install-location\bolt-launcher\*
+      - name: Create Release
+        run: cmake --install build/ --prefix install
+      
+      # Uploads D:\a\Bolt\Bolt\install-location as a zip
+      # With `bolt-launcher` as the root directory of the zip file
+      - name: Upload Build Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: Bolt-Linux-${{ github.sha }}
+          path: D:\a\Bolt\Bolt\install
+  
+      # Uploads the zip file to the release matching the format of the above step
+      # Such that build artifacts and release artifacts are the same
+      - name: Attach Bolt Artifact to Release
+        if: github.event_name == 'release' && env.ENABLE_LINUX_RELEASES == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        # In the script below we cd in to Bolt first, because otherwise the gh command will fail.
+        run: |
+          cd Bolt
+          zip -r Bolt-Linux.zip install
+          gh release upload ${{ github.event.release.tag_name }} Bolt-Linux.zip
